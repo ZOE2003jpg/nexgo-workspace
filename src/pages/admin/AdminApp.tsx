@@ -4,28 +4,39 @@ import { G, btn, card, inp } from "@/lib/nexgo-theme";
 import { STitle, PHeader, Badge, Lbl, Spinner } from "@/components/nexgo/SharedUI";
 import { ProfileScreen } from "@/pages/shared/ProfileScreen";
 import { toast } from "@/components/nexgo/ToastContainer";
+import { useAuth } from "@/hooks/useAuth";
+
+const ROLES = ["student", "vendor", "rider", "admin"] as const;
 
 export function AdminApp({ tab, onLogout }: any) {
+  const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [orders, setOrders] = useState<any[]>([]);
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [selectedRest, setSelectedRest] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any[]>([]);
+  const [editingSetting, setEditingSetting] = useState<string | null>(null);
+  const [settingValue, setSettingValue] = useState("");
+  const [changingRole, setChangingRole] = useState<string | null>(null);
+
+  const loadUsers = async () => {
+    const { data: profiles } = await supabase.from("profiles").select("id, full_name, email, created_at, avatar_url").order("created_at", { ascending: false });
+    if (!profiles) return;
+    const enriched = await Promise.all(profiles.map(async (p: any) => {
+      const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: p.id });
+      return { ...p, role: roleData || "student" };
+    }));
+    setUsers(enriched);
+  };
 
   useEffect(() => {
-    supabase.from("profiles").select("id, full_name, created_at, avatar_url").order("created_at", { ascending: false })
-      .then(async ({ data: profiles }) => {
-        if (!profiles) return;
-        const enriched = await Promise.all(profiles.map(async (p: any) => {
-          const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: p.id });
-          return { ...p, role: roleData || "student" };
-        }));
-        setUsers(enriched);
-      });
+    loadUsers();
     supabase.from("orders").select("id, order_number, total_amount, status, created_at, restaurants(name)").order("created_at", { ascending: false }).limit(50)
       .then(({ data }) => { if (data) setOrders(data); });
     supabase.from("restaurants").select("*").then(({ data }) => { if (data) setRestaurants(data); });
+    supabase.from("platform_settings").select("*").order("key").then(({ data }) => { if (data) setSettings(data); });
   }, []);
 
   useEffect(() => {
@@ -34,25 +45,113 @@ export function AdminApp({ tab, onLogout }: any) {
       .then(({ data }) => { if (data) setMenuItems(data); });
   }, [selectedRest]);
 
+  const changeUserRole = async (targetId: string, newRole: string) => {
+    if (!user) return;
+    setChangingRole(targetId);
+    try {
+      const { data, error } = await supabase.rpc("admin_set_user_role", {
+        _admin_id: user.id,
+        _target_user_id: targetId,
+        _new_role: newRole as any,
+      });
+      if (error) throw error;
+      const result = data as any;
+      if (result?.success) {
+        toast(result.message, "success");
+        await loadUsers();
+      } else {
+        toast(result?.message || "Failed", "error");
+      }
+    } catch (e: any) {
+      toast(e.message, "error");
+    }
+    setChangingRole(null);
+  };
+
+  const updateSetting = async (key: string) => {
+    if (!user) return;
+    const val = parseInt(settingValue);
+    if (isNaN(val) || val < 0) { toast("Invalid value", "error"); return; }
+    const { data, error } = await supabase.rpc("admin_update_setting", {
+      _admin_id: user.id,
+      _key: key,
+      _value: val,
+    });
+    if (error) { toast(error.message, "error"); return; }
+    const result = data as any;
+    if (result?.success) {
+      toast("Setting updated", "success");
+      setEditingSetting(null);
+      const { data: s } = await supabase.from("platform_settings").select("*").order("key");
+      if (s) setSettings(s);
+    } else {
+      toast(result?.message || "Failed", "error");
+    }
+  };
+
   if (tab === "users") return (
     <div style={{ padding: "24px 16px", display: "flex", flexDirection: "column", gap: 14, animation: "fadeUp .4s ease", maxWidth: 800, margin: "0 auto", width: "100%" }}>
       <PHeader title="Users" sub="Manage all users" icon="👥" />
       <input style={inp()} placeholder="🔍  Search users…" value={search} onChange={e => setSearch(e.target.value)} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {users.filter((u: any) => u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.role?.toLowerCase().includes(search.toLowerCase())).map((u: any) => (
+        {users.filter((u: any) => u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.role?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())).map((u: any) => (
           <div key={u.id} style={card()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <div style={{ width: 42, height: 42, borderRadius: "50%", background: `linear-gradient(135deg,${G.goldDark},${G.gold})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: G.black }}>{u.full_name?.[0] || "?"}</div>
+                <div style={{ width: 42, height: 42, borderRadius: "50%", background: `linear-gradient(135deg,${G.goldDark},${G.gold})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: G.black, flexShrink: 0 }}>{u.full_name?.[0] || "?"}</div>
                 <div>
                   <div style={{ fontWeight: 600, color: G.white, fontSize: 14 }}>{u.full_name}</div>
+                  <div style={{ fontSize: 11, color: G.whiteDim }}>{u.email}</div>
                   <div style={{ fontSize: 11, color: G.whiteDim, textTransform: "capitalize" }}>{u.role} · Joined {new Date(u.created_at).toLocaleDateString()}</div>
                 </div>
               </div>
+              {u.id !== user?.id && (
+                <select
+                  value={u.role}
+                  disabled={changingRole === u.id}
+                  onChange={e => changeUserRole(u.id, e.target.value)}
+                  style={{ ...inp({ width: "auto", padding: "6px 10px", fontSize: 12, cursor: "pointer" }) }}
+                >
+                  {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                </select>
+              )}
+              {u.id === user?.id && <Badge status="You (Admin)" />}
             </div>
           </div>
         ))}
       </div>
+    </div>
+  );
+
+  if (tab === "settings") return (
+    <div style={{ padding: "24px 16px", display: "flex", flexDirection: "column", gap: 14, animation: "fadeUp .4s ease", maxWidth: 800, margin: "0 auto", width: "100%" }}>
+      <PHeader title="Platform Settings" sub="Configure system values" icon="⚙️" />
+      {settings.map((s: any) => (
+        <div key={s.id} style={card({ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 })}>
+          <div>
+            <div style={{ fontWeight: 600, color: G.white, fontSize: 14 }}>{s.key.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</div>
+            <div style={{ fontSize: 12, color: G.whiteDim }}>Key: {s.key}</div>
+          </div>
+          {editingSetting === s.key ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="number"
+                value={settingValue}
+                onChange={e => setSettingValue(e.target.value)}
+                style={inp({ width: 100, padding: "6px 10px", fontSize: 13 })}
+              />
+              <button onClick={() => updateSetting(s.key)} style={btn("primary", { padding: "6px 14px", fontSize: 12 })}>Save</button>
+              <button onClick={() => setEditingSetting(null)} style={btn("ghost", { padding: "6px 14px", fontSize: 12 })}>✕</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ fontFamily: "'DM Mono'", fontSize: 18, fontWeight: 700, color: G.gold }}>{s.value}</div>
+              <button onClick={() => { setEditingSetting(s.key); setSettingValue(String(s.value)); }} style={btn("ghost", { padding: "6px 14px", fontSize: 12 })}>Edit</button>
+            </div>
+          )}
+        </div>
+      ))}
+      {settings.length === 0 && <div style={{ ...card(), textAlign: "center", color: G.whiteDim }}>No settings configured</div>}
     </div>
   );
 

@@ -454,6 +454,18 @@ export type Database = {
         Args: { _order_id: string; _rider_id: string }
         Returns: Json
       }
+      admin_set_user_role: {
+        Args: {
+          _admin_id: string
+          _new_role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: Json
+      }
+      admin_update_setting: {
+        Args: { _admin_id: string; _key: string; _value: number }
+        Returns: Json
+      }
       deduct_wallet: {
         Args: {
           _amount: number
