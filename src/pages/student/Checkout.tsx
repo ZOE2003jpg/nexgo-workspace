@@ -24,16 +24,26 @@ export function Checkout({ cart, setCart, wallet, onBack, onDone, restaurantId }
     if (pay === "wallet" && wallet < total) { toast("Insufficient wallet balance", "error"); placedRef.current = false; return; }
     setLoading(true);
 
+    const orderNum = "NX-" + Date.now().toString(36).toUpperCase();
+
+    // For wallet payment: deduct FIRST, then create order
+    if (pay === "wallet") {
+      const { data: deductResult } = await supabase.rpc("deduct_wallet", { _user_id: user.id, _amount: total, _label: `NexChow ${orderNum}`, _icon: "🍽️" });
+      const dr = deductResult as any;
+      if (!dr?.success) { toast(dr?.message || "Wallet deduction failed", "error"); setLoading(false); placedRef.current = false; return; }
+      refreshWallet();
+    }
+
+    // For transfer: initialize payment first
     let payRef: string | null = null;
     if (pay === "transfer") {
-      const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { amount: total } });
-      if (error || !data?.checkout_url) { toast("Payment failed to initialize", "error"); setLoading(false); placedRef.current = false; return; }
+      const { data, error: payErr } = await supabase.functions.invoke("initialize-payment", { body: { amount: total } });
+      if (payErr || !data?.checkout_url) { toast("Payment failed to initialize", "error"); setLoading(false); placedRef.current = false; return; }
       payRef = data.reference;
       window.open(data.checkout_url, "_blank");
       toast("Complete payment in the new tab", "info");
     }
 
-    const orderNum = "NX-" + Date.now().toString(36).toUpperCase();
     const { data: order, error } = await supabase.from("orders").insert({
       order_number: orderNum,
       student_id: user.id,
@@ -56,13 +66,6 @@ export function Checkout({ cart, setCart, wallet, onBack, onDone, restaurantId }
       quantity: c.qty,
     }));
     await supabase.from("order_items").insert(items);
-
-    if (pay === "wallet") {
-      const { data: deductResult } = await supabase.rpc("deduct_wallet", { _user_id: user.id, _amount: total, _label: `NexChow ${orderNum}`, _icon: "🍽️" });
-      const dr = deductResult as any;
-      if (!dr?.success) { toast(dr?.message || "Wallet deduction failed", "error"); setLoading(false); placedRef.current = false; return; }
-      refreshWallet();
-    }
 
     setLoading(false); setDone_(true); setCart([]);
     setTimeout(onDone, 2500);

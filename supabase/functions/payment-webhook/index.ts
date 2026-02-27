@@ -79,7 +79,8 @@ Deno.serve(async (req) => {
     const { data: existing } = await supabase
       .from("wallet_transactions")
       .select("id")
-      .eq("label", `KoraPay ${reference}`)
+      .eq("user_id", userId)
+      .like("label", `%${reference}%`)
       .limit(1);
 
     if (existing && existing.length > 0) {
@@ -88,19 +89,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use atomic topup_wallet RPC to prevent race conditions
-    const { data: result, error: rpcError } = await supabase.rpc("topup_wallet", {
-      _user_id: userId,
-      _amount: parsedAmount,
-    });
+    // Get wallet and do atomic update
+    const { data: wallet } = await supabase
+      .from("wallets")
+      .select("id, balance")
+      .eq("user_id", userId)
+      .single();
 
-    if (rpcError || !result?.success) {
-      console.error("Wallet topup failed:", rpcError || result?.message);
-      return new Response(JSON.stringify({ error: result?.message || "Wallet topup failed" }), {
+    if (!wallet) {
+      console.error("Wallet not found for user:", userId);
+      return new Response(JSON.stringify({ error: "Wallet not found" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { error: updateErr } = await supabase
+      .from("wallets")
+      .update({ balance: wallet.balance + parsedAmount, updated_at: new Date().toISOString() })
+      .eq("id", wallet.id);
+
+    if (updateErr) {
+      console.error("Wallet update failed:", updateErr);
+      return new Response(JSON.stringify({ error: "Wallet update failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    await supabase.from("wallet_transactions").insert({
+      wallet_id: wallet.id,
+      user_id: userId,
+      amount: parsedAmount,
+      label: `KoraPay ${reference}`,
+      icon: "💳",
+    });
 
     return new Response(JSON.stringify({ received: true, credited: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
