@@ -9,8 +9,7 @@ export function WalletScreen({ wallet }: any) {
   const { user, profile, refreshWallet } = useAuth();
   const [amt, setAmt] = useState("");
   const [txns, setTxns] = useState<any[]>([]);
-  const [fundMethod, setFundMethod] = useState<"wallet" | "korapay">("wallet");
-  const [fundingKora, setFundingKora] = useState(false);
+  const [funding, setFunding] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -23,22 +22,12 @@ export function WalletScreen({ wallet }: any) {
     const v = parseInt(amt);
     if (isNaN(v) || v <= 0) { toast("Enter a valid amount", "error"); return; }
 
-    if (fundMethod === "korapay") {
-      setFundingKora(true);
-      const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { amount: v } });
-      setFundingKora(false);
-      if (error || !data?.checkout_url) { toast("Payment initialization failed", "error"); return; }
-      window.open(data.checkout_url, "_blank");
-      toast("Complete payment in the new tab", "info");
-      return;
-    }
-
-    const { data: topupResult } = await supabase.rpc("topup_wallet", { _user_id: user.id, _amount: v });
-    const tr = topupResult as any;
-    if (!tr?.success) { toast(tr?.message || "Top-up failed", "error"); return; }
-    refreshWallet();
-    setAmt("");
-    toast(`₦${v.toLocaleString()} added!`, "success");
+    setFunding(true);
+    const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { amount: v } });
+    setFunding(false);
+    if (error || !data?.checkout_url) { toast("Payment initialization failed", "error"); return; }
+    window.open(data.checkout_url, "_blank");
+    toast("Complete payment in the new tab. Your wallet will update automatically.", "info");
   };
 
   return (
@@ -58,20 +47,8 @@ export function WalletScreen({ wallet }: any) {
           ))}
         </div>
         <input style={{ ...inp({ marginBottom: 12 }) }} type="number" placeholder="Enter amount…" value={amt} onChange={e => setAmt(e.target.value)} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-          {[{ id: "wallet" as const, label: "Demo Top-up", sub: "Instant (dev mode)", icon: "💳" }, { id: "korapay" as const, label: "KoraPay", sub: "Pay with card/bank", icon: "🏦" }].map(m => (
-            <div key={m.id} onClick={() => setFundMethod(m.id)} style={{ padding: 12, borderRadius: 10, border: `2px solid ${fundMethod === m.id ? G.gold : G.b5}`, background: fundMethod === m.id ? G.goldGlow : G.b4, cursor: "pointer", display: "flex", gap: 12, alignItems: "center", transition: "all .2s" }}>
-              <span style={{ fontSize: 20 }}>{m.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, color: G.white, fontSize: 13 }}>{m.label}</div>
-                <div style={{ fontSize: 11, color: G.whiteDim }}>{m.sub}</div>
-              </div>
-              {fundMethod === m.id && <span style={{ color: G.gold, fontSize: 18 }}>✓</span>}
-            </div>
-          ))}
-        </div>
-        <button onClick={fund} disabled={fundingKora} style={{ ...btn("gold", { width: "100%", padding: "13px", opacity: fundingKora ? .6 : 1 }) }}>
-          {fundingKora ? <><Spinner /> Connecting…</> : fundMethod === "korapay" ? "Pay with KoraPay →" : "Fund Wallet →"}
+        <button onClick={fund} disabled={funding} style={{ ...btn("gold", { width: "100%", padding: "13px", opacity: funding ? .6 : 1 }) }}>
+          {funding ? <><Spinner /> Connecting…</> : "Pay with KoraPay →"}
         </button>
       </div>
       <div>
