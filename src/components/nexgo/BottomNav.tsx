@@ -23,7 +23,7 @@ export function BottomNav({ role, tab, setTab, cartCount }: any) {
     admin: {
       left: [{ id: "adashboard", icon: "📊", label: "Dashboard" }, { id: "users", icon: "👥", label: "Users" }],
       right: [{ id: "analytics", icon: "📈", label: "Analytics" }, { id: "profile", icon: "👤", label: "Profile" }],
-      more: [],
+      more: [{ id: "restaurants", icon: "🍽️", label: "Restaurants" }, { id: "orders", icon: "📦", label: "Orders" }],
     },
   }[role] || { left: [], right: [], more: [] };
 

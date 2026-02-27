@@ -9,8 +9,17 @@ export function NexChow({ onSelect, cart, onCheckout }: any) {
   const [restaurants, setRestaurants] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("restaurants").select("*").eq("is_open", true).order("rating", { ascending: false })
-      .then(({ data }) => { if (data) setRestaurants(data); });
+    const fetchRestaurants = () => {
+      supabase.from("restaurants").select("*").order("rating", { ascending: false })
+        .then(({ data }) => { if (data) setRestaurants(data); });
+    };
+    fetchRestaurants();
+
+    // Real-time restaurant updates
+    const channel = supabase.channel('restaurants-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, () => { fetchRestaurants(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const total = cart.reduce((a: number, c: any) => a + c.price * c.qty, 0);
@@ -21,6 +30,7 @@ export function NexChow({ onSelect, cart, onCheckout }: any) {
     const mf = filter === "All" || r.cuisine === filter;
     return ms && mf;
   });
+
   return (
     <div style={{ padding: "24px 16px", animation: "fadeUp .4s ease", maxWidth: 800, margin: "0 auto", width: "100%" }}>
       <PHeader title="NexChow" sub="Order food on campus" icon="🍽️" />
@@ -32,12 +42,12 @@ export function NexChow({ onSelect, cart, onCheckout }: any) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: qty > 0 ? 80 : 0 }}>
         {list.map((r: any) => (
-          <div key={r.id} onClick={() => onSelect(r)} className="hover-gold" style={{ ...card({ cursor: "pointer", display: "flex", gap: 14, alignItems: "center", transition: "all .2s" }) }}>
+          <div key={r.id} onClick={() => r.is_open ? onSelect(r) : null} className={r.is_open ? "hover-gold" : ""} style={{ ...card({ cursor: r.is_open ? "pointer" : "default", display: "flex", gap: 14, alignItems: "center", transition: "all .2s", opacity: r.is_open ? 1 : 0.5 }) }}>
             <div style={{ width: 66, height: 66, borderRadius: 14, background: G.b4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, flexShrink: 0 }}>{r.image}</div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontWeight: 700, color: G.white, fontSize: 15 }}>{r.name}</div>
-                {r.tag && <Chip>{r.tag}</Chip>}
+                {!r.is_open ? <Chip>Closed</Chip> : r.tag ? <Chip>{r.tag}</Chip> : null}
               </div>
               <div style={{ fontSize: 12, color: G.whiteDim, marginTop: 3 }}>{r.cuisine} · {r.price_range || ""}</div>
               <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12, color: G.whiteDim }}>

@@ -6,8 +6,17 @@ export function RestaurantDetail({ r, cart, setCart, onBack, onCheckout }: any) 
   const [menuItems, setMenuItems] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("menu_items").select("*").eq("restaurant_id", r.id).eq("available", true)
-      .then(({ data }) => { if (data) setMenuItems(data); });
+    const fetchMenu = () => {
+      supabase.from("menu_items").select("*").eq("restaurant_id", r.id).eq("available", true)
+        .then(({ data }) => { if (data) setMenuItems(data); });
+    };
+    fetchMenu();
+
+    // Real-time menu updates
+    const channel = supabase.channel(`menu-${r.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items', filter: `restaurant_id=eq.${r.id}` }, () => { fetchMenu(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [r.id]);
 
   const add = (item: any) => setCart((p: any) => { const ex = p.find((c: any) => c.id === item.id); return ex ? p.map((c: any) => c.id === item.id ? { ...c, qty: c.qty + 1 } : c) : [...p, { ...item, qty: 1 }]; });
@@ -29,6 +38,7 @@ export function RestaurantDetail({ r, cart, setCart, onBack, onCheckout }: any) 
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: total > 0 ? 80 : 0 }}>
+        {menuItems.length === 0 && <div style={{ ...card(), textAlign: "center", color: G.whiteDim }}>No items available right now</div>}
         {menuItems.map((item: any) => (
           <div key={item.id} style={card({ display: "flex", justifyContent: "space-between", alignItems: "center" })}>
             <div style={{ display: "flex", gap: 12, alignItems: "center", flex: 1 }}>
