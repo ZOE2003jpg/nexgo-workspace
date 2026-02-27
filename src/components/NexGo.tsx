@@ -23,7 +23,12 @@ function NexGoInner() {
   useEffect(() => { injectStyles(); }, []);
   const { user, profile, role: authRole, walletBalance, loading: authLoading, signOut } = useAuth();
   const [screen, setScreen] = useState("splash");
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<any[]>(() => {
+    try { const saved = localStorage.getItem("nexgo_cart"); return saved ? JSON.parse(saved) : []; } catch { return []; }
+  });
+
+  useEffect(() => { try { localStorage.setItem("nexgo_cart", JSON.stringify(cart)); } catch {} }, [cart]);
+
   const [tab, setTab] = useState("home");
 
   useEffect(() => {

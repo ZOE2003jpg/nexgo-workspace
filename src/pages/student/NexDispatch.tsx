@@ -15,6 +15,12 @@ export function NexDispatch() {
   const [dropoff, setDropoff] = useState("");
   const [pkgDesc, setPkgDesc] = useState("");
   const [dispatches, setDispatches] = useState<any[]>([]);
+  const [dispatchFee, setDispatchFee] = useState(250);
+
+  useEffect(() => {
+    supabase.from("platform_settings").select("value").eq("key", "dispatch_fee").single()
+      .then(({ data }) => { if (data) setDispatchFee(data.value); });
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -27,7 +33,7 @@ export function NexDispatch() {
     setLoading(true);
     const num = "DP-" + Math.floor(Math.random() * 9000 + 1000);
     const { error } = await supabase.from("dispatches").insert({
-      dispatch_number: num, student_id: user.id, pickup_location: pickup, dropoff_location: dropoff, package_description: pkgDesc,
+      dispatch_number: num, student_id: user.id, pickup_location: pickup, dropoff_location: dropoff, package_description: pkgDesc, fee: dispatchFee,
     });
     setLoading(false);
     if (error) { toast(error.message, "error"); return; }
@@ -68,7 +74,7 @@ export function NexDispatch() {
           <div style={{ ...card({ background: G.goldGlow, border: `1px solid ${G.goldDark}` }) }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: G.whiteDim, fontSize: 14 }}>Estimated Fee</span>
-              <span style={{ color: G.gold, fontWeight: 700, fontFamily: "'DM Mono'" }}>₦250</span>
+              <span style={{ color: G.gold, fontWeight: 700, fontFamily: "'DM Mono'" }}>₦{dispatchFee.toLocaleString()}</span>
             </div>
           </div>
           <button onClick={doRequest} disabled={loading} style={{ ...btn("gold", { width: "100%", padding: "14px", opacity: loading ? .7 : 1 }) }}>

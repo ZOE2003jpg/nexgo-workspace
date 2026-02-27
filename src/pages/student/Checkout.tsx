@@ -12,6 +12,7 @@ export function Checkout({ cart, setCart, wallet, onBack, onDone, restaurantId }
   const [loading, setLoading] = useState(false);
   const [done, setDone_] = useState(false);
   const placedRef = useRef(false);
+  const lastOrderRef = useRef(0);
   const fee = 150;
   const subtotal = cart.reduce((a: number, c: any) => a + c.price * c.qty, 0);
   const total = subtotal + fee;
@@ -19,9 +20,13 @@ export function Checkout({ cart, setCart, wallet, onBack, onDone, restaurantId }
   const place = async () => {
     if (!user) return;
     if (placedRef.current) return;
+    // Rate limit: 1 order per 60 seconds
+    const now = Date.now();
+    if (now - lastOrderRef.current < 60000) { toast("Please wait before placing another order", "error"); return; }
     placedRef.current = true;
     if (!address) { toast("Please enter delivery address", "error"); placedRef.current = false; return; }
     if (pay === "wallet" && wallet < total) { toast("Insufficient wallet balance", "error"); placedRef.current = false; return; }
+    lastOrderRef.current = now;
     setLoading(true);
 
     const orderNum = "NX-" + Date.now().toString(36).toUpperCase();

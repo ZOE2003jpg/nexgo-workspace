@@ -14,6 +14,33 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const [sessionReady, setSessionReady] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    // Listen for PASSWORD_RECOVERY event from the redirect URL hash
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setSessionReady(true);
+        setChecking(false);
+      } else if (event === "SIGNED_IN" && session) {
+        // Recovery token processed, session available
+        setSessionReady(true);
+        setChecking(false);
+      }
+    });
+
+    // Also check if there's already a session (user may have landed here with a valid session)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSessionReady(true);
+      }
+      // Give a short delay for the auth state change to fire from URL hash
+      setTimeout(() => setChecking(false), 2000);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleReset = async () => {
     if (!password || password.length < 6) { setError("Password must be at least 6 characters"); return; }
@@ -22,6 +49,8 @@ export default function ResetPassword() {
     const { error: err } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (err) { setError(err.message); return; }
+    // Sign out after password update so user logs in fresh
+    await supabase.auth.signOut();
     setDone(true);
   };
 
@@ -31,6 +60,23 @@ export default function ResetPassword() {
         <div style={{fontSize:64,marginBottom:16}}>✅</div>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:700,color:G.gold,marginBottom:12}}>Password Updated!</div>
         <div style={{color:G.whiteDim,fontSize:14,marginBottom:24}}>You can now sign in with your new password.</div>
+        <a href="/" style={{display:"inline-block",padding:"12px 24px",borderRadius:10,background:`linear-gradient(135deg,${G.gold},${G.goldDark})`,color:G.black,fontWeight:600,textDecoration:"none",fontSize:14}}>Go to Login →</a>
+      </div>
+    </div>
+  );
+
+  if (checking) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:G.black}}>
+      <div style={{color:G.whiteDim,fontSize:14}}>Verifying reset link…</div>
+    </div>
+  );
+
+  if (!sessionReady) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:G.black,padding:20}}>
+      <div style={{textAlign:"center",maxWidth:400}}>
+        <div style={{fontSize:64,marginBottom:16}}>⚠️</div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:700,color:G.gold,marginBottom:12}}>Invalid or Expired Link</div>
+        <div style={{color:G.whiteDim,fontSize:14,marginBottom:24}}>This password reset link has expired or is invalid. Please request a new one.</div>
         <a href="/" style={{display:"inline-block",padding:"12px 24px",borderRadius:10,background:`linear-gradient(135deg,${G.gold},${G.goldDark})`,color:G.black,fontWeight:600,textDecoration:"none",fontSize:14}}>Go to Login →</a>
       </div>
     </div>
