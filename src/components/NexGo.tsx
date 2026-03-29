@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { useAuth, AuthProvider } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { G, injectStyles } from "@/lib/nexgo-theme";
 import { Spinner } from "@/components/nexgo/SharedUI";
 import { ToastContainer } from "@/components/nexgo/ToastContainer";
 import { BottomNav } from "@/components/nexgo/BottomNav";
-import { Splash } from "@/components/nexgo/Splash";
-import { Auth } from "@/pages/Auth";
 import { StudentHome } from "@/pages/student/StudentHome";
 import { NexChow } from "@/pages/student/NexChow";
 import { RestaurantDetail } from "@/pages/student/RestaurantDetail";
@@ -19,10 +18,10 @@ import { VendorApp } from "@/pages/vendor/VendorApp";
 import { RiderApp } from "@/pages/rider/RiderApp";
 import { AdminApp } from "@/pages/admin/AdminApp";
 
-function NexGoInner() {
+export default function NexGoApp() {
   useEffect(() => { injectStyles(); }, []);
+  const navigate = useNavigate();
   const { user, profile, role: authRole, walletBalance, loading: authLoading, signOut } = useAuth();
-  const [screen, setScreen] = useState("splash");
   const [cart, setCart] = useState<any[]>(() => {
     try { const saved = localStorage.getItem("nexgo_cart"); return saved ? JSON.parse(saved) : []; } catch { return []; }
   });
@@ -33,20 +32,29 @@ function NexGoInner() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (user && authRole) {
+    if (!user) {
+      navigate("/signin", { replace: true });
+      return;
+    }
+    if (authRole) {
       setTab({ student: "home", vendor: "dashboard", rider: "rdashboard", admin: "adashboard" }[authRole] || "home");
-      setScreen("app");
-    } else if (!user && screen === "app") {
-      setScreen("auth");
     }
   }, [user, authRole, authLoading]);
 
   const handleLogout = async () => {
     await signOut();
-    setScreen("auth");
     setTab("home");
     setCart([]);
+    navigate("/", { replace: true });
   };
+
+  if (authLoading || !user) {
+    return (
+      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: G.black }}>
+        <Spinner size={32} color={G.gold} />
+      </div>
+    );
+  }
 
   const role = authRole || "student";
 
@@ -66,7 +74,7 @@ function NexGoInner() {
     return <StudentHome wallet={walletBalance} setTab={setTab} profile={profile} />;
   };
 
-  const AppContent = (
+  return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: G.black, position: "relative" }}>
       <ToastContainer />
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>
@@ -77,28 +85,5 @@ function NexGoInner() {
       </div>
       <BottomNav role={role} tab={tab} setTab={setTab} cartCount={cart.reduce((a: number, c: any) => a + c.qty, 0)} />
     </div>
-  );
-
-  if (screen === "splash") {
-    return <Splash onDone={() => setScreen(user ? "app" : "auth")} />;
-  }
-
-  if (screen === "auth") {
-    if (authLoading) {
-      return <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: G.black }}>
-        <Spinner size={32} color={G.gold} />
-      </div>;
-    }
-    return <Auth />;
-  }
-
-  return AppContent;
-}
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <NexGoInner />
-    </AuthProvider>
   );
 }
