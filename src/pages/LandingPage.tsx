@@ -34,9 +34,6 @@ const HOW_IT_WORKS = [
 ];
 
 const STATS = [
-  { value: "1K+", label: "Campus Users" },
-  { value: "50+", label: "Vendors" },
-  { value: "500+", label: "Orders Delivered" },
   { value: "24/7", label: "Support" },
 ];
 
