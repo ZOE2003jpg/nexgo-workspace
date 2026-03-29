@@ -34,17 +34,9 @@ const HOW_IT_WORKS = [
 ];
 
 const STATS = [
-  { value: "1K+", label: "Campus Users" },
-  { value: "50+", label: "Vendors" },
-  { value: "500+", label: "Orders Delivered" },
   { value: "24/7", label: "Support" },
 ];
 
-const TESTIMONIALS = [
-  { name: "Chioma A.", role: "Student", text: "NexGo changed my campus life. I order food between lectures and it arrives before the next class starts!" },
-  { name: "Emeka O.", role: "Vendor", text: "My sales doubled in the first month. The vendor dashboard makes managing orders so easy." },
-  { name: "Tunde K.", role: "Rider", text: "Flexible earnings on my own schedule. The dispatch system is straightforward and pays well." },
-];
 
 const FAQ = [
   { q: "Is NexGo free to use?", a: "Yes! Creating an account is completely free. You only pay for the services you use — food orders, dispatches, and trips." },
@@ -193,33 +185,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── TESTIMONIALS ─── */}
-      <section style={{ ...sectionStyle, paddingTop: 40 }}>
-        <h2 style={headingStyle}>What Users <span style={{ color: G.gold }}>Say</span></h2>
-        <p style={subStyle}>Real feedback from real campus users.</p>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {TESTIMONIALS.map((t) => (
-            <div key={t.name} style={{ background: G.b3, border: `1px solid ${G.b5}`, borderRadius: 16, padding: 28 }}>
-              <p style={{ color: G.whiteDim, fontSize: 14, lineHeight: 1.7, marginBottom: 20, fontStyle: "italic" }}>"{t.text}"</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: "50%",
-                  background: `linear-gradient(135deg,${G.gold},${G.goldDark})`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: G.black, fontWeight: 700, fontSize: 16,
-                }}>
-                  {t.name[0]}
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: G.white }}>{t.name}</div>
-                  <div style={{ fontSize: 12, color: G.whiteDim }}>{t.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ─── FAQ ─── */}
       <section style={{ ...sectionStyle, paddingTop: 40 }}>
