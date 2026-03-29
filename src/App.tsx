@@ -10,6 +10,7 @@ import SignUp from "./pages/SignUp";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import NexGoApp from "@/components/NexGo";
+import { RedirectIfAuth, RequireAuth } from "@/components/RouteGuards";
 
 const queryClient = new QueryClient();
 
@@ -21,12 +22,11 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/signup" element={<SignUp />} />
+            <Route path="/" element={<RedirectIfAuth><LandingPage /></RedirectIfAuth>} />
+            <Route path="/signin" element={<RedirectIfAuth><SignIn /></RedirectIfAuth>} />
+            <Route path="/signup" element={<RedirectIfAuth><SignUp /></RedirectIfAuth>} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/app" element={<NexGoApp />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/app" element={<RequireAuth><NexGoApp /></RequireAuth>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
