@@ -32,14 +32,10 @@ export default function NexGoApp() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      navigate("/signin", { replace: true });
-      return;
-    }
     if (authRole) {
       setTab({ student: "home", vendor: "dashboard", rider: "rdashboard", admin: "adashboard" }[authRole] || "home");
     }
-  }, [user, authRole, authLoading]);
+  }, [authRole, authLoading]);
 
   const handleLogout = async () => {
     await signOut();
