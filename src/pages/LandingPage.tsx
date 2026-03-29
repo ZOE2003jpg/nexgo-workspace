@@ -37,11 +37,6 @@ const STATS = [
   { value: "24/7", label: "Support" },
 ];
 
-const TESTIMONIALS = [
-  { name: "Chioma A.", role: "Student", text: "NexGo changed my campus life. I order food between lectures and it arrives before the next class starts!" },
-  { name: "Emeka O.", role: "Vendor", text: "My sales doubled in the first month. The vendor dashboard makes managing orders so easy." },
-  { name: "Tunde K.", role: "Rider", text: "Flexible earnings on my own schedule. The dispatch system is straightforward and pays well." },
-];
 
 const FAQ = [
   { q: "Is NexGo free to use?", a: "Yes! Creating an account is completely free. You only pay for the services you use — food orders, dispatches, and trips." },
