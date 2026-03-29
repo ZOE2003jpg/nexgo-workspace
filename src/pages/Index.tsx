@@ -1,7 +1,5 @@
-import NexGoApp from "@/components/NexGo";
+import LandingPage from "./LandingPage";
 
-const Index = () => {
-  return <NexGoApp />;
-};
+const Index = () => <LandingPage />;
 
 export default Index;
